@@ -238,7 +238,17 @@ function renderArticle() {
   const bodyBlocks = chapter.paragraphs.map((p, i) => `<div class="para-block"><p class="para-en">${tokenise(p, saved, i)}</p>${paragraphsZh[i] ? `<p class="para-zh">${paragraphsZh[i]}</p>` : ""}</div>`).join("");
   articleContent.innerHTML = `<p class="article-kicker">${meta.en} / Chapter ${String(chapter.id).padStart(3, "0")}</p><h2>${chapter.title}</h2><p class="article-deck">${chapter.deck}</p><div class="article-body">${bodyBlocks}</div>`;
   articleContent.querySelectorAll(".word").forEach(word => {
-    word.addEventListener("click", () => showWordBubble(word, word.dataset.word, findMeaning(word.dataset.word, chapter, Number(word.dataset.para))));
+    word.addEventListener("click", (e) => {
+      const audio = el("articleAudio");
+      const listenButton = el("listenButton");
+      if (listenButton.classList.contains("playing") && audio && !audio.paused) {
+        audio.pause();
+        e.stopPropagation();
+        return;
+      }
+      showWordBubble(word, word.dataset.word, findMeaning(word.dataset.word, chapter, Number(word.dataset.para)));
+      e.stopPropagation();
+    });
     word.addEventListener("dblclick", () => { addWord(word.dataset.word, chapter, Number(word.dataset.para)); hideWordBubble(); });
   });
   renderWords();
@@ -425,7 +435,12 @@ function toggleListen() {
     retryCount = 0;
     updateAudioHighlight();
   };
-  audio.onpause = clearAudioHighlight;
+  audio.onpause = () => {
+    if (audioHighlightTimer) {
+      cancelAnimationFrame(audioHighlightTimer);
+      audioHighlightTimer = null;
+    }
+  };
 
   audio.src = `audio/${String(chapter.id).padStart(3, "0")}.mp3`;
   button.classList.add("playing");
@@ -467,6 +482,18 @@ function stopRecordingUI() { clearInterval(recordingInterval); el("recordButton"
 function formatTime(seconds) { return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`; }
 
 renderFilters();
+articleContent.addEventListener("click", (e) => {
+  const audio = el("articleAudio");
+  const listenButton = el("listenButton");
+  if (!listenButton.classList.contains("playing") || !audio || !audio.src) return;
+  if (e.target.closest(".word")) return;
+
+  if (!audio.paused) {
+    audio.pause();
+  } else {
+    audio.play().catch(() => {});
+  }
+});
 el("wordBubbleAudio").addEventListener("click", () => { const word = el("wordBubble").dataset.word; if (word) speak(word); });
 document.addEventListener("click", event => { const bubble = el("wordBubble"); if (bubble.hidden || bubble.contains(event.target) || event.target.classList.contains("word")) return; hideWordBubble(); });
 document.addEventListener("keydown", event => { if (event.key === "Escape") hideWordBubble(); });
