@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f4ef" />
+    <title>Little Chapters · English Learning</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#top" aria-label="Little Chapters home">
+          <span class="brand-mark">✦</span>
+          <span><strong>Little Chapters</strong><small>English, one page at a time.</small></span>
+        </a>
+        <div class="topbar-actions">
+          <div class="font-control" aria-label="字体大小">
+            <button class="icon-button" id="fontDown" title="缩小字体" aria-label="缩小字体">A−</button>
+            <span id="fontSizeLabel">100%</span>
+            <button class="icon-button" id="fontUp" title="放大字体" aria-label="放大字体">A＋</button>
+          </div>
+          <button class="outline-button" id="copyButton"><span>▣</span> 复制全文</button>
+        </div>
+      </header>
+
+      <main class="workspace" id="top">
+        <aside class="library-panel">
+          <div class="library-heading">
+            <div>
+              <p class="eyebrow">THE LIBRARY</p>
+              <h1>120 chapters</h1>
+            </div>
+            <span class="progress-ring"><span id="progressCurrent">001</span><span class="progress-total">/120</span></span>
+          </div>
+          <label class="search-box">
+            <span>⌕</span>
+            <input id="searchInput" type="search" placeholder="搜索文章或主题" />
+          </label>
+          <div class="filter-row" id="filterRow">
+            <button class="filter active" data-filter="all">全部</button>
+          </div>
+          <nav class="chapter-list" id="chapterList" aria-label="文章目录"></nav>
+          <div class="library-note">
+            <span class="note-icon">☼</span>
+            <p>每天读一篇，慢慢把世界读进自己的语言里。</p>
+          </div>
+        </aside>
+
+        <section class="reading-panel" aria-live="polite">
+          <div class="reading-header">
+            <div class="breadcrumbs"><span>CHAPTER <span id="chapterNumber">06</span></span><i></i><span id="chapterCategory">SCIENCE</span></div>
+            <div class="reading-tools">
+              <span class="read-time" id="readTime">4 min read</span>
+              <button class="round-button translate-button" id="translateButton" title="显示/隐藏译文" aria-label="显示译文">译文</button>
+              <button class="round-button listen-button" id="listenButton" title="播放文章" aria-label="播放文章">播放文章</button>
+            </div>
+          </div>
+          <article class="article" id="articleContent"></article>
+          <audio id="articleAudio" hidden></audio>
+          <div class="word-bubble" id="wordBubble" hidden>
+            <div class="word-bubble-head">
+              <button class="word-bubble-audio" id="wordBubbleAudio" title="听发音" aria-label="听发音">◖</button>
+              <strong id="wordBubbleWord"></strong>
+            </div>
+            <p id="wordBubbleMeaning"></p>
+          </div>
+          <div class="article-footer">
+            <div class="article-tip"><span>✧</span><span>单击单词查看发音和词义，双击加入本篇生词表</span></div>
+            <div class="pager">
+              <button class="pager-button" id="prevButton" aria-label="上一篇">←</button>
+              <button class="pager-button next" id="nextButton" aria-label="下一篇">→</button>
+            </div>
+          </div>
+        </section>
+
+        <aside class="practice-panel">
+          <div class="panel-title-row">
+            <div><p class="eyebrow">YOUR WORDS</p><h2>本篇生词</h2></div>
+            <span class="word-count" id="wordCount">0 words</span>
+          </div>
+          <p class="panel-intro">遇到陌生词就收进来。熟悉之后，轻轻删掉它。</p>
+          <div class="word-list" id="wordList"></div>
+          <div class="recording-card">
+            <div class="recording-topline"><span class="mic-dot" id="micDot"></span><span id="recordingStatus">录下你的声音</span><span class="recording-time" id="recordingTime">00:00</span></div>
+            <p>读完之后听一遍，感受自己的进步。</p>
+            <div class="recording-actions">
+              <button class="record-button" id="recordButton"><span class="record-symbol">●</span> 开始录音</button>
+              <button class="delete-record-button" id="deleteRecordButton" title="删除录音" aria-label="删除录音">⌫</button>
+            </div>
+            <audio id="recordingPlayer" controls hidden></audio>
+          </div>
+        </aside>
+      </main>
+    </div>
+    <div class="toast" id="toast" role="status"></div>
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

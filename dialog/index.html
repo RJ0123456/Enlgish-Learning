@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SceneSpeak | 英语情景对话</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">S</span><div><strong>SceneSpeak</strong><small>English in context</small></div></div>
+      <div class="sidebar-heading"><span>学习场景</span><span id="scene-count">0</span></div>
+      <label class="search-box"><span>⌕</span><input id="search-input" type="search" placeholder="搜索场景、类别..."></label>
+      <nav id="scene-list" class="scene-list" aria-label="场景列表"></nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div class="crumb"><span>学习库</span><b>/</b><span id="category-label">加载中</span></div>
+        <div class="top-actions"><button class="icon-button" id="decrease-font" title="减小字体">A−</button><button class="icon-button" id="increase-font" title="增大字体">A＋</button><button class="copy-button" id="copy-button">复制对话</button></div>
+      </header>
+
+      <section class="lesson" aria-live="polite">
+        <div class="lesson-intro"><div class="eyebrow">SCENE <span id="scene-number">01</span></div><h1 id="lesson-title">正在读取场景...</h1><p id="lesson-summary">从真实语境开始，让每一句英语都有落点。</p></div>
+        <div class="lesson-actions"><button class="play-button" id="play-button"><span class="play-icon">▶</span><span id="play-label">播放对话</span></button><button class="record-button" id="record-button"><span class="record-icon">●</span><span id="record-label">开始录音</span></button><button class="text-button" id="translation-toggle">显示译文 <span>⌄</span></button></div>
+      </section>
+
+      <section id="recording-panel" class="recording-panel" hidden><div class="recording-status"><span class="recording-dot"></span><div><strong id="recording-status-label">我的朗读</strong><small>本次录音仅保存在当前页面</small></div></div><audio id="recording-audio" controls></audio><button class="delete-recording" id="delete-recording">删除录音</button></section>
+
+      <div class="content-grid">
+        <section class="dialogue-panel"><div class="panel-heading"><div><span class="section-kicker">DIALOGUE</span><h2>情景对话</h2></div><span class="hint">点击单词查看释义 · 双击加入生词</span></div><div id="dialogue" class="dialogue"></div></section>
+        <aside class="vocab-panel"><div class="panel-heading"><div><span class="section-kicker">VOCABULARY</span><h2>我的生词</h2></div><span id="vocab-count" class="count-badge">0</span></div><p class="vocab-note">点击单词听发音</p><div id="vocab-list" class="vocab-list"></div><div class="vocab-footer">本篇预设词汇 <span id="preset-count">0</span></div></aside>
+      </div>
+    </main>
+  </div>
+  <div id="word-popover" class="word-popover" role="dialog" aria-hidden="true"><button id="close-popover" aria-label="关闭">×</button><strong id="popover-word"></strong><span id="popover-meaning"></span><button id="speak-word" class="speak-button">◖ 播放发音</button></div>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
