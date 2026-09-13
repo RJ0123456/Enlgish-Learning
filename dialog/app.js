@@ -1,5 +1,5 @@
 const CSV_URL = '英文情景对话分类大全_完整对话版.csv';
-const audioFiles = ['与客户沟通.wav','体检.wav','便利店.wav','健身房.wav','入职.wav','公交.wav','出租车_网约车.wav','初次见面.wav','医院就诊.wav','博物馆.wav','同事日常.wav','咖啡店.wav','商场.wav','地铁_轻轨.wav','外卖.wav','客房服务.wav','导游沟通.wav','工地安全.wav','快餐.wav','急救.wav','打电话.wav','日常闲聊.wav','景区门票.wav','机场值机.wav','民宿.wav','求助.wav','洗衣店.wav','海关边检.wav','游客中心.wav','火车站_高铁.wav','现场工作沟通.wav','理发店.wav','租车.wav','移民局_签证处.wav','药店.wav','营业厅.wav','表达观点.wav','警察局.wav','超市.wav','轮渡.wav','邀约.wav','邮局.wav','酒店入住.wav','酒店退房.wav','银行.wav','问路.wav','集市.wav','面试.wav','餐厅点餐.wav'];
+const audioFiles = ['与客户沟通.mp3','体检.mp3','便利店.mp3','健身房.mp3','入职.mp3','公交.mp3','出租车_网约车.mp3','初次见面.mp3','医院就诊.mp3','博物馆.mp3','同事日常.mp3','咖啡店.mp3','商场.mp3','地铁_轻轨.mp3','外卖.mp3','客房服务.mp3','导游沟通.mp3','工地安全.mp3','快餐.mp3','急救.mp3','打电话.mp3','日常闲聊.mp3','景区门票.mp3','机场值机.mp3','民宿.mp3','求助.mp3','洗衣店.mp3','海关边检.mp3','游客中心.mp3','火车站_高铁.mp3','现场工作沟通.mp3','理发店.mp3','租车.mp3','移民局_签证处.mp3','药店.mp3','营业厅.mp3','表达观点.mp3','警察局.mp3','超市.mp3','轮渡.mp3','邀约.mp3','邮局.mp3','酒店入住.mp3','酒店退房.mp3','银行.mp3','问路.mp3','集市.mp3','面试.mp3','餐厅点餐.mp3'];
 const presetWords = [{word:'check in',meaning:'办理登机手续'}, {word:'luggage',meaning:'行李'}, {word:'delay',meaning:'延误'}];
 const wordMeanings = {'good':'好的；令人愉快的','morning':'早上','check':'检查；办理','in':'在里面；进入','flight':'航班','passport':'护照','ticket':'票；机票','please':'请','how':'怎样；多少','many':'许多','pieces':'件；片','of':'……的','are':'是','you':'你；您','checking':'托运；检查','two':'两个；两件','could':'可以；能','have':'有；得到','window':'窗户；窗口','seat':'座位','course':'当然','boarding':'登机','pass':'通行证','baggage':'行李','claim':'领取；索赔','tags':'标签','thank':'感谢','very':'非常','much':'很多；非常','will':'将会','my':'我的','be':'是；成为','on':'在……上','time':'时间；准时','afraid':'担心的','there':'那里','may':'可能；可以','one':'一；一个','hour':'小时','due':'由于','weather':'天气','listen':'听','announcements':'广播通知','luggage':'行李','overweight':'超重的','extra':'额外的','fee':'费用','card':'卡片','news':'新闻','might':'可能','cancelled':'取消了的','storm':'暴风雨','next':'下一；下一个','available':'可用的；有空的','tomorrow':'明天','hotel':'酒店','meal':'餐食；一顿饭','voucher':'凭证；代金券'};
 function getWordMeaning(word){const normalized=word.toLowerCase();return wordMeanings[normalized]||presetWords.find(item=>item.word.toLowerCase()===normalized)?.meaning||'暂无词义';}
@@ -7,12 +7,61 @@ const state = {scenes:[], current:0, customWords:[], fontSize:17, audio:null, re
 const $ = selector => document.querySelector(selector);
 function parseCSV(text){ const rows=[]; let row=[], cell='', quoted=false; for(let i=0;i<text.length;i++){const char=text[i], next=text[i+1]; if(char==='"' && quoted && next==='"'){cell+='"';i++;continue} if(char==='"'){quoted=!quoted;continue} if(char===','&&!quoted){row.push(cell);cell='';continue} if((char==='\n'||char==='\r')&&!quoted){if(char==='\r'&&next==='\n')i++;row.push(cell);if(row.some(value=>value.trim()))rows.push(row);row=[];cell='';continue} cell+=char} if(cell||row.length){row.push(cell);rows.push(row)} return rows.slice(1).map(row=>({category:row[0],title:row[1],english:row[2],translation:row[3]})); }
 function normalize(value){return value.replace(/[\\/_:：&\s-]/g,'');}
-function audioFor(title){const target=normalize(title);return audioFiles.find(file=>normalize(file.replace('.wav','')).includes(target)||target.includes(normalize(file.replace('.wav',''))));}
+function audioFor(title){const target=normalize(title);return audioFiles.find(file=>normalize(file.replace(/\.(wav|mp3)$/i,'')).includes(target)||target.includes(normalize(file.replace(/\.(wav|mp3)$/i,''))));}
 function escapeHTML(value){return value.replace(/[&<>"']/g, char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));}
 function renderScenes(filter=''){const groups={}; state.scenes.forEach((scene,index)=>{if(filter&&!`${scene.category}${scene.title}`.includes(filter))return;(groups[scene.category]??=[]).push({scene,index})});$('#scene-count').textContent=state.scenes.length;$('#scene-list').innerHTML=Object.entries(groups).map(([category,items])=>`<div class="scene-group"><div class="group-title">${escapeHTML(category)}</div>${items.map(({scene,index})=>`<button class="scene-item ${index===state.current?'active':''}" data-index="${index}">${escapeHTML(scene.title)}</button>`).join('')}</div>`).join('')||'<div class="empty-vocab">没有找到匹配场景</div>';document.querySelectorAll('.scene-item').forEach(button=>button.addEventListener('click',()=>{state.current=Number(button.dataset.index);renderScenes($('#search-input').value.trim());renderLesson()}));}
 function wordsFromLine(text){return text.split(/(\s+|[,.!?;:'"()\-])/).map(part=>part.trim()&&/[a-zA-Z]/.test(part)?`<span class="word" data-word="${part.replace(/[^a-zA-Z'-]/g,'').toLowerCase()}">${escapeHTML(part)}</span>`:escapeHTML(part)).join('');}
 function renderDialogue(scene){const englishLines=scene.english.split(/\n/).filter(Boolean);const translationLines=(scene.translation||'').split(/\n/).filter(Boolean);return englishLines.map((line,index)=>{const separator=line.indexOf(':');const speaker=separator>0?line.slice(0,separator):'';const text=separator>0?line.slice(separator+1).trim():line;return `<div class="line"><span class="line-number">${String(index+1).padStart(2,'0')}</span><div><div class="speaker">${escapeHTML(speaker)}</div><div class="english">${wordsFromLine(text)}</div></div></div><div class="line translation">${escapeHTML(translationLines[index]||'')}</div>`}).join('');}
-function renderLesson(){const scene=state.scenes[state.current];if(!scene)return;clearRecording();$('#category-label').textContent=scene.category;$('#scene-number').textContent=String(state.current+1).padStart(2,'0');$('#lesson-title').textContent=scene.title;$('#lesson-summary').textContent=`${scene.category} · ${scene.english.split(/\n/).filter(Boolean).length} 句对话`;$('#dialogue').innerHTML=renderDialogue(scene);$('#dialogue').style.fontSize=`${state.fontSize}px`;$('#translation-toggle').innerHTML=document.body.classList.contains('show-translations')?'隐藏译文 <span>⌃</span>':'显示译文 <span>⌄</span>';bindWordEvents();renderVocab();if(state.audio){state.audio.pause();state.audio=null;$('#play-label').textContent='播放对话';$('.play-icon').textContent='▶';}}
+let audioHighlightTimer = null;
+
+function clearAudioHighlight() {
+  if (audioHighlightTimer) {
+    cancelAnimationFrame(audioHighlightTimer);
+    audioHighlightTimer = null;
+  }
+  document.querySelectorAll('.dialogue .word.audio-playing').forEach(el => el.classList.remove('audio-playing'));
+}
+
+function updateAudioHighlight() {
+  if (!state.audio || state.audio.paused || !state.audio.duration) {
+    clearAudioHighlight();
+    return;
+  }
+
+  const wordElements = Array.from(document.querySelectorAll('.dialogue .word'));
+  if (!wordElements.length) return;
+
+  const totalChars = wordElements.reduce((sum, node) => sum + (node.textContent || '').trim().length + 1, 0);
+  const progress = Math.min(Math.max(state.audio.currentTime / state.audio.duration, 0), 1);
+  const targetCharIndex = progress * totalChars;
+
+  let accumulatedChars = 0;
+  let activeIndex = 0;
+
+  for (let i = 0; i < wordElements.length; i++) {
+    const len = (wordElements[i].textContent || '').trim().length + 1;
+    accumulatedChars += len;
+    if (accumulatedChars >= targetCharIndex) {
+      activeIndex = i;
+      break;
+    }
+  }
+
+  wordElements.forEach((node, i) => {
+    if (i === activeIndex) {
+      if (!node.classList.contains('audio-playing')) {
+        node.classList.add('audio-playing');
+        node.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+      }
+    } else {
+      node.classList.remove('audio-playing');
+    }
+  });
+
+  audioHighlightTimer = requestAnimationFrame(updateAudioHighlight);
+}
+
+function renderLesson(){const scene=state.scenes[state.current];if(!scene)return;clearRecording();clearAudioHighlight();$('#category-label').textContent=scene.category;$('#scene-number').textContent=String(state.current+1).padStart(2,'0');$('#lesson-title').textContent=scene.title;$('#lesson-summary').textContent=`${scene.category} · ${scene.english.split(/\n/).filter(Boolean).length} 句对话`;$('#dialogue').innerHTML=renderDialogue(scene);$('#dialogue').style.fontSize=`${state.fontSize}px`;$('#translation-toggle').innerHTML=document.body.classList.contains('show-translations')?'隐藏译文 <span>⌃</span>':'显示译文 <span>⌄</span>';bindWordEvents();renderVocab();if(state.audio){state.audio.pause();state.audio=null;$('#play-label').textContent='播放对话';$('.play-icon').textContent='▶';}}
 function getWords(){return [...presetWords,...state.customWords.filter(word=>!presetWords.some(item=>item.word===word.word))]}
 function renderVocab(){const words=getWords();$('#vocab-count').textContent=words.length;$('#preset-count').textContent=presetWords.length;$('#vocab-list').innerHTML=words.length?words.map((item,index)=>`<div class="vocab-entry"><button class="vocab-main" data-speak="${escapeHTML(item.word)}"><span class="vocab-word">${escapeHTML(item.word)}</span><span class="vocab-meaning">${escapeHTML(item.meaning||'点击播放发音')}</span></button>${index>=presetWords.length?'<button class="remove-word" data-remove="'+escapeHTML(item.word)+'" aria-label="删除">×</button>':''}</div>`).join(''):'<div class="empty-vocab">还没有生词。双击对话中的单词，把它收进这里。</div>';document.querySelectorAll('[data-speak]').forEach(button=>button.addEventListener('click',()=>speak(button.dataset.speak)));document.querySelectorAll('[data-remove]').forEach(button=>button.addEventListener('click',()=>{state.customWords=state.customWords.filter(item=>item.word!==button.dataset.remove);renderVocab()}));}
 function speak(word){if('speechSynthesis' in window){speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(word);utterance.lang='en-US';speechSynthesis.speak(utterance)}}
@@ -23,4 +72,4 @@ function clearRecording(){if(state.recorder&&state.recorder.state!=='inactive')s
 async function toggleRecording(){if(state.recorder&&state.recorder.state!=='inactive'){state.recorder.stop();return}if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){showToast('当前浏览器不支持录音');return}try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});state.recordingChunks=[];state.recorder=new MediaRecorder(stream);const recorder=state.recorder;recorder.ondataavailable=event=>{if(event.data.size)state.recordingChunks.push(event.data)};recorder.onstop=()=>{stream.getTracks().forEach(track=>track.stop());if(!state.recordingChunks.length)return;const blob=new Blob(state.recordingChunks,{type:recorder.mimeType||'audio/webm'});state.recordingUrl=URL.createObjectURL(blob);$('#recording-audio').src=state.recordingUrl;$('#recording-panel').hidden=false;$('#record-button').classList.remove('recording');$('#record-label').textContent='重新录音';$('.record-icon').textContent='●';$('#recording-status-label').textContent='本篇朗读录音'};recorder.start();$('#record-button').classList.add('recording');$('#record-label').textContent='结束录音';$('.record-icon').textContent='■'}catch(error){showToast('无法使用麦克风，请检查浏览器权限')}}
 $('#record-button').addEventListener('click',toggleRecording);$('#delete-recording').addEventListener('click',()=>{clearRecording();showToast('录音已删除')});window.addEventListener('beforeunload',clearRecording);
 async function init(){try{const response=await fetch(CSV_URL);if(!response.ok)throw new Error('CSV unavailable');state.scenes=parseCSV(await response.text());renderScenes();renderLesson()}catch(error){$('#lesson-title').textContent='无法读取学习库';$('#lesson-summary').textContent='请通过本地静态服务器打开页面，而不是直接双击 HTML 文件。';console.error(error)}}
-$('#search-input').addEventListener('input',event=>renderScenes(event.target.value.trim()));$('#translation-toggle').addEventListener('click',()=>document.body.classList.toggle('show-translations')||renderLesson());$('#decrease-font').addEventListener('click',()=>{state.fontSize=Math.max(14,state.fontSize-1);$('#dialogue').style.fontSize=`${state.fontSize}px`});$('#increase-font').addEventListener('click',()=>{state.fontSize=Math.min(22,state.fontSize+1);$('#dialogue').style.fontSize=`${state.fontSize}px`});$('#copy-button').addEventListener('click',async()=>{const scene=state.scenes[state.current];try{await navigator.clipboard.writeText(scene.english);showToast('对话已复制')}catch(error){showToast('复制失败，请检查浏览器权限')}});$('#play-button').addEventListener('click',()=>{const scene=state.scenes[state.current];if(state.audio){state.audio.pause();state.audio=null;$('#play-label').textContent='播放对话';$('.play-icon').textContent='▶';return}const file=audioFor(scene.title);if(!file){showToast('暂未找到对应音频');return}state.audio=new Audio(`audio/${encodeURIComponent(file)}`);state.audio.play();$('#play-label').textContent='停止播放';$('.play-icon').textContent='■';state.audio.onended=()=>{$('#play-label').textContent='播放对话';$('.play-icon').textContent='▶';state.audio=null}});$('#close-popover').addEventListener('click',()=>$('#word-popover').classList.remove('visible'));document.addEventListener('click',event=>{if(!event.target.closest('.word-popover')&&!event.target.closest('.word'))$('#word-popover').classList.remove('visible')});init();
+$('#search-input').addEventListener('input',event=>renderScenes(event.target.value.trim()));$('#translation-toggle').addEventListener('click',()=>document.body.classList.toggle('show-translations')||renderLesson());$('#decrease-font').addEventListener('click',()=>{state.fontSize=Math.max(14,state.fontSize-1);$('#dialogue').style.fontSize=`${state.fontSize}px`});$('#increase-font').addEventListener('click',()=>{state.fontSize=Math.min(22,state.fontSize+1);$('#dialogue').style.fontSize=`${state.fontSize}px`});$('#copy-button').addEventListener('click',async()=>{const scene=state.scenes[state.current];try{await navigator.clipboard.writeText(scene.english);showToast('对话已复制')}catch(error){showToast('复制失败，请检查浏览器权限')}});$('#play-button').addEventListener('click',()=>{const scene=state.scenes[state.current];if(state.audio){state.audio.pause();clearAudioHighlight();state.audio=null;$('#play-label').textContent='播放对话';$('.play-icon').textContent='▶';return}const file=audioFor(scene.title);if(!file){showToast('暂未找到对应音频');return}let retryCount=0;const audio=new Audio(`audio/${encodeURIComponent(file)}`);audio.onerror=()=>{if(retryCount<2){retryCount++;audio.load();audio.play().catch(()=>{});return}clearAudioHighlight();state.audio=null;$('#play-label').textContent='播放对话';$('.play-icon').textContent='▶';showToast('音频文件加载失败，请重试')};audio.onended=()=>{clearAudioHighlight();$('#play-label').textContent='播放对话';$('.play-icon').textContent='▶';state.audio=null};audio.ontimeupdate=updateAudioHighlight;audio.onplay=()=>{retryCount=0;updateAudioHighlight()};audio.onpause=clearAudioHighlight;state.audio=audio;audio.play().catch(()=>{clearAudioHighlight();state.audio=null;showToast('音频播放失败，请检查网络或浏览器设置')});$('#play-label').textContent='停止播放';$('.play-icon').textContent='■'});$('#close-popover').addEventListener('click',()=>$('#word-popover').classList.remove('visible'));document.addEventListener('click',event=>{if(!event.target.closest('.word-popover')&&!event.target.closest('.word'))$('#word-popover').classList.remove('visible')});init();

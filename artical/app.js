@@ -223,6 +223,7 @@ function renderArticle() {
   const saved = getSavedWords(chapter);
   const meta = categoryMeta(chapter);
   stopListening();
+  clearAudioHighlight();
   hideWordBubble();
   translationVisible = false;
   el("translateButton").classList.remove("active");
@@ -297,6 +298,56 @@ function speak(text) {
   utterance.lang = "en-US"; utterance.rate = .88;
   window.speechSynthesis.speak(utterance);
 }
+let audioHighlightTimer = null;
+
+function clearAudioHighlight() {
+  if (audioHighlightTimer) {
+    cancelAnimationFrame(audioHighlightTimer);
+    audioHighlightTimer = null;
+  }
+  document.querySelectorAll(".word.audio-playing").forEach(el => el.classList.remove("audio-playing"));
+}
+
+function updateAudioHighlight() {
+  const audio = el("articleAudio");
+  if (!audio || audio.paused || !audio.duration) {
+    clearAudioHighlight();
+    return;
+  }
+
+  const wordElements = Array.from(articleContent.querySelectorAll(".word"));
+  if (!wordElements.length) return;
+
+  const totalChars = wordElements.reduce((sum, node) => sum + (node.textContent || "").trim().length + 1, 0);
+  const progress = Math.min(Math.max(audio.currentTime / audio.duration, 0), 1);
+  const targetCharIndex = progress * totalChars;
+
+  let accumulatedChars = 0;
+  let activeIndex = 0;
+
+  for (let i = 0; i < wordElements.length; i++) {
+    const len = (wordElements[i].textContent || "").trim().length + 1;
+    accumulatedChars += len;
+    if (accumulatedChars >= targetCharIndex) {
+      activeIndex = i;
+      break;
+    }
+  }
+
+  wordElements.forEach((node, i) => {
+    if (i === activeIndex) {
+      if (!node.classList.contains("audio-playing")) {
+        node.classList.add("audio-playing");
+        node.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+      }
+    } else {
+      node.classList.remove("audio-playing");
+    }
+  });
+
+  audioHighlightTimer = requestAnimationFrame(updateAudioHighlight);
+}
+
 function toggleTranslation() {
   translationVisible = !translationVisible;
   const body = articleContent.querySelector(".article-body");
@@ -308,25 +359,43 @@ function toggleListen() {
   if (button.classList.contains("playing")) { stopListening(); return; }
   const chapter = chapters[currentIndex];
   const audio = el("articleAudio");
+  let retryCount = 0;
+
   audio.onerror = () => {
+    if (retryCount < 2) {
+      retryCount++;
+      audio.load();
+      audio.play().catch(() => {});
+      return;
+    }
     stopListening();
-    showToast(`第${chapter.id}篇音频文件加载失败`);
+    showToast(`第${chapter.id}篇音频文件加载失败，请重试`);
   };
   audio.onended = stopListening;
-  audio.src = `audio/${String(chapter.id).padStart(3, "0")}.wav`;
+  audio.ontimeupdate = updateAudioHighlight;
+  audio.onplay = () => {
+    retryCount = 0;
+    updateAudioHighlight();
+  };
+  audio.onpause = clearAudioHighlight;
+
+  audio.src = `audio/${String(chapter.id).padStart(3, "0")}.mp3`;
   button.classList.add("playing");
   button.textContent = "停止播放";
   button.title = "停止播放";
   button.setAttribute("aria-label", "停止播放");
   audio.play().catch(() => {
     stopListening();
-    showToast("音频播放失败，请检查音频文件");
+    showToast("音频播放失败，请检查网络或浏览器设置");
   });
 }
 function stopListening() {
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  clearAudioHighlight();
   const audio = el("articleAudio");
   audio.onerror = null;
+  audio.onplay = null;
+  audio.onpause = null;
   audio.pause();
   const button = el("listenButton");
   button.classList.remove("playing");
