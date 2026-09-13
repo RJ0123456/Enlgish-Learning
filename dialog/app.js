@@ -10,7 +10,7 @@ function normalize(value){return value.replace(/[\\/_:：&\s-]/g,'');}
 function audioFor(title){const target=normalize(title);return audioFiles.find(file=>normalize(file.replace(/\.(wav|mp3)$/i,'')).includes(target)||target.includes(normalize(file.replace(/\.(wav|mp3)$/i,''))));}
 function escapeHTML(value){return value.replace(/[&<>"']/g, char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));}
 function renderScenes(filter=''){const groups={}; state.scenes.forEach((scene,index)=>{if(filter&&!`${scene.category}${scene.title}`.includes(filter))return;(groups[scene.category]??=[]).push({scene,index})});$('#scene-count').textContent=state.scenes.length;$('#scene-list').innerHTML=Object.entries(groups).map(([category,items])=>`<div class="scene-group"><div class="group-title">${escapeHTML(category)}</div>${items.map(({scene,index})=>`<button class="scene-item ${index===state.current?'active':''}" data-index="${index}">${escapeHTML(scene.title)}</button>`).join('')}</div>`).join('')||'<div class="empty-vocab">没有找到匹配场景</div>';document.querySelectorAll('.scene-item').forEach(button=>button.addEventListener('click',()=>{state.current=Number(button.dataset.index);renderScenes($('#search-input').value.trim());renderLesson()}));}
-function wordsFromLine(text){return text.split(/(\s+|[,.!?;:'"()\-])/).map(part=>part.trim()&&/[a-zA-Z]/.test(part)?`<span class="word" data-word="${part.replace(/[^a-zA-Z'-]/g,'').toLowerCase()}">${escapeHTML(part)}</span>`:escapeHTML(part)).join('');}
+function wordsFromLine(text){return text.split(/(\s+|[,.!?;:'"()\-])/).map(part=>!part?'':(/[a-zA-Z]/.test(part)?`<span class="word" data-word="${part.replace(/[^a-zA-Z'-]/g,'').toLowerCase()}">${escapeHTML(part)}</span>`:`<span class="word-sep">${escapeHTML(part)}</span>`)).join('');}
 function renderDialogue(scene){const englishLines=scene.english.split(/\n/).filter(Boolean);const translationLines=(scene.translation||'').split(/\n/).filter(Boolean);return englishLines.map((line,index)=>{const separator=line.indexOf(':');const speaker=separator>0?line.slice(0,separator):'';const text=separator>0?line.slice(separator+1).trim():line;return `<div class="line"><span class="line-number">${String(index+1).padStart(2,'0')}</span><div><div class="speaker">${escapeHTML(speaker)}</div><div class="english">${wordsFromLine(text)}</div></div></div><div class="line translation">${escapeHTML(translationLines[index]||'')}</div>`}).join('');}
 let audioHighlightTimer = null;
 
@@ -19,44 +19,89 @@ function clearAudioHighlight() {
     cancelAnimationFrame(audioHighlightTimer);
     audioHighlightTimer = null;
   }
-  document.querySelectorAll('.dialogue .word.audio-playing').forEach(el => el.classList.remove('audio-playing'));
+  document.querySelectorAll('.dialogue .word.audio-playing, .dialogue .word-sep.audio-playing').forEach(el => {
+    el.classList.remove('audio-playing');
+    delete el.dataset.lastScrolled;
+  });
 }
 
 function updateAudioHighlight() {
   if (!state.audio || state.audio.paused || !state.audio.duration) {
-    clearAudioHighlight();
+    if (audioHighlightTimer) {
+      cancelAnimationFrame(audioHighlightTimer);
+      audioHighlightTimer = null;
+    }
+    if (!state.audio || !state.audio.duration) {
+      clearAudioHighlight();
+    }
     return;
   }
 
   const wordElements = Array.from(document.querySelectorAll('.dialogue .word'));
   if (!wordElements.length) return;
 
-  const totalChars = wordElements.reduce((sum, node) => sum + (node.textContent || '').trim().length + 1, 0);
-  const progress = Math.min(Math.max(state.audio.currentTime / state.audio.duration, 0), 1);
-  const targetCharIndex = progress * totalChars;
+  let totalWeight = 0;
+  const weights = wordElements.map(node => {
+    const text = (node.textContent || '').trim();
+    let weight = text.length + 3.5;
 
-  let accumulatedChars = 0;
+    const nextText = node.nextSibling ? (node.nextSibling.textContent || '') : '';
+    if (/[.?!]/.test(nextText)) {
+      weight += 10;
+    } else if (/[,;:—-]/.test(nextText)) {
+      weight += 5;
+    }
+
+    const parentLine = node.closest('.english');
+    if (parentLine && node === parentLine.querySelector('.word:last-of-type')) {
+      weight += 14;
+    }
+
+    totalWeight += weight;
+    return weight;
+  });
+
+  const duration = state.audio.duration;
+  const startOffset = 0.25;
+  const endOffset = 0.35;
+  const effectiveDuration = Math.max(duration - startOffset - endOffset, 0.5);
+  const currentTime = Math.min(Math.max(state.audio.currentTime - startOffset, 0), effectiveDuration);
+  const progress = currentTime / effectiveDuration;
+
+  const targetWeight = progress * totalWeight;
+
+  let accumulatedWeight = 0;
   let activeIndex = 0;
 
-  for (let i = 0; i < wordElements.length; i++) {
-    const len = (wordElements[i].textContent || '').trim().length + 1;
-    accumulatedChars += len;
-    if (accumulatedChars >= targetCharIndex) {
+  for (let i = 0; i < weights.length; i++) {
+    accumulatedWeight += weights[i];
+    if (accumulatedWeight >= targetWeight) {
       activeIndex = i;
       break;
     }
   }
+  if (progress >= 0.99) {
+    activeIndex = weights.length - 1;
+  }
 
-  wordElements.forEach((node, i) => {
-    if (i === activeIndex) {
+  const activeWordNode = wordElements[activeIndex];
+  const allNodes = Array.from(document.querySelectorAll('.dialogue .word, .dialogue .word-sep'));
+  const cutoffIndex = allNodes.indexOf(activeWordNode);
+
+  allNodes.forEach((node, i) => {
+    if (cutoffIndex !== -1 && i <= cutoffIndex) {
       if (!node.classList.contains('audio-playing')) {
         node.classList.add('audio-playing');
-        node.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
       }
     } else {
       node.classList.remove('audio-playing');
     }
   });
+
+  if (activeWordNode && activeWordNode.dataset.lastScrolled !== String(activeIndex)) {
+    activeWordNode.dataset.lastScrolled = String(activeIndex);
+    activeWordNode.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }
 
   audioHighlightTimer = requestAnimationFrame(updateAudioHighlight);
 }

@@ -212,8 +212,11 @@ function renderChapters() {
 }
 function tokenise(text, selectedWords = [], paragraphIndex = 0) {
   return text.split(/(\s+|[,.!?;:])/).map(part => {
+    if (!part) return "";
     const clean = part.toLowerCase().replace(/[^a-z'-]/g, "");
-    if (!clean || !/^[a-z'-]+$/i.test(part)) return part;
+    if (!clean || !/^[a-z'-]+$/i.test(part)) {
+      return `<span class="word-sep">${part}</span>`;
+    }
     const isSelected = selectedWords.some(item => item.word === clean);
     return `<span class="word ${isSelected ? "selected" : ""}" data-word="${clean}" data-para="${paragraphIndex}">${part}</span>`;
   }).join("");
@@ -305,45 +308,90 @@ function clearAudioHighlight() {
     cancelAnimationFrame(audioHighlightTimer);
     audioHighlightTimer = null;
   }
-  document.querySelectorAll(".word.audio-playing").forEach(el => el.classList.remove("audio-playing"));
+  document.querySelectorAll(".word.audio-playing, .word-sep.audio-playing").forEach(el => {
+    el.classList.remove("audio-playing");
+    delete el.dataset.lastScrolled;
+  });
 }
 
 function updateAudioHighlight() {
   const audio = el("articleAudio");
   if (!audio || audio.paused || !audio.duration) {
-    clearAudioHighlight();
+    if (audioHighlightTimer) {
+      cancelAnimationFrame(audioHighlightTimer);
+      audioHighlightTimer = null;
+    }
+    if (!audio || !audio.duration) {
+      clearAudioHighlight();
+    }
     return;
   }
 
   const wordElements = Array.from(articleContent.querySelectorAll(".word"));
   if (!wordElements.length) return;
 
-  const totalChars = wordElements.reduce((sum, node) => sum + (node.textContent || "").trim().length + 1, 0);
-  const progress = Math.min(Math.max(audio.currentTime / audio.duration, 0), 1);
-  const targetCharIndex = progress * totalChars;
+  let totalWeight = 0;
+  const weights = wordElements.map(node => {
+    const text = (node.textContent || "").trim();
+    let weight = text.length + 3.5;
 
-  let accumulatedChars = 0;
+    const nextText = node.nextSibling ? (node.nextSibling.textContent || "") : "";
+    if (/[.?!]/.test(nextText)) {
+      weight += 10;
+    } else if (/[,;:—-]/.test(nextText)) {
+      weight += 5;
+    }
+
+    const parentPara = node.closest("p");
+    if (parentPara && node === parentPara.querySelector(".word:last-of-type")) {
+      weight += 12;
+    }
+
+    totalWeight += weight;
+    return weight;
+  });
+
+  const duration = audio.duration;
+  const startOffset = 0.25;
+  const endOffset = 0.35;
+  const effectiveDuration = Math.max(duration - startOffset - endOffset, 0.5);
+  const currentTime = Math.min(Math.max(audio.currentTime - startOffset, 0), effectiveDuration);
+  const progress = currentTime / effectiveDuration;
+
+  const targetWeight = progress * totalWeight;
+
+  let accumulatedWeight = 0;
   let activeIndex = 0;
 
-  for (let i = 0; i < wordElements.length; i++) {
-    const len = (wordElements[i].textContent || "").trim().length + 1;
-    accumulatedChars += len;
-    if (accumulatedChars >= targetCharIndex) {
+  for (let i = 0; i < weights.length; i++) {
+    accumulatedWeight += weights[i];
+    if (accumulatedWeight >= targetWeight) {
       activeIndex = i;
       break;
     }
   }
+  if (progress >= 0.99) {
+    activeIndex = weights.length - 1;
+  }
 
-  wordElements.forEach((node, i) => {
-    if (i === activeIndex) {
+  const activeWordNode = wordElements[activeIndex];
+  const allNodes = Array.from(articleContent.querySelectorAll(".word, .word-sep"));
+  const cutoffIndex = allNodes.indexOf(activeWordNode);
+
+  allNodes.forEach((node, i) => {
+    if (cutoffIndex !== -1 && i <= cutoffIndex) {
       if (!node.classList.contains("audio-playing")) {
         node.classList.add("audio-playing");
-        node.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
       }
     } else {
       node.classList.remove("audio-playing");
     }
   });
+
+  if (activeWordNode && activeWordNode.dataset.lastScrolled !== String(activeIndex)) {
+    activeWordNode.dataset.lastScrolled = String(activeIndex);
+    activeWordNode.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+  }
 
   audioHighlightTimer = requestAnimationFrame(updateAudioHighlight);
 }
